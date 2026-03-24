@@ -131,11 +131,18 @@ func toBackslash(s string) string {
 }
 
 // cleanUnixPath strips the leading slash from Windows drive-letter paths.
-// url.Parse("unix:///C:\tmp\a.sock") yields path="/C:\tmp\a.sock";
-// net.Listen("unix", ...) needs "C:\tmp\a.sock" on Windows.
+// After url.Parse, "unix:///C:/tmp/a.sock" yields path="/C:/tmp/a.sock";
+// net.Listen("unix", ...) needs "C:/tmp/a.sock" on Windows.
 func cleanUnixPath(p string) string {
-	if runtime.GOOS == "windows" && len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+	if runtime.GOOS == "windows" && isDrivePath(p) {
 		return p[1:]
 	}
 	return p
+}
+
+// isDrivePath reports whether p looks like "/X:" where X is an ASCII letter.
+func isDrivePath(p string) bool {
+	return len(p) >= 3 && p[0] == '/' &&
+		((p[1] >= 'A' && p[1] <= 'Z') || (p[1] >= 'a' && p[1] <= 'z')) &&
+		p[2] == ':'
 }

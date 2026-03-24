@@ -291,6 +291,31 @@ func TestResolveAddr(t *testing.T) {
 	}
 }
 
+func TestIsDrivePath(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"/C:", true},
+		{"/c:", true},
+		{"/Z:\\tmp", true},
+		{"/a:/sock", true},
+		{"/ :", false},  // space is not a letter
+		{"/1:", false},  // digit is not a letter
+		{"/C", false},   // too short, no colon
+		{"C:", false},   // no leading slash
+		{"", false},     // empty
+		{"/", false},    // too short
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := isDrivePath(tt.input); got != tt.want {
+				t.Errorf("isDrivePath(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResolveListenerUnixCleanup(t *testing.T) {
 	sock := filepath.Join(t.TempDir(), "stale.sock")
 	// Create a stale socket file.
