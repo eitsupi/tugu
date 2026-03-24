@@ -16,13 +16,49 @@ func main() {
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: tugu <listen-address> <connect-address>\n\n")
-		fmt.Fprintf(os.Stderr, "A cross-platform IPC socket bridge.\n\n")
-		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  tugu tcp://127.0.0.1:8080 unix:///tmp/app.sock\n")
-		fmt.Fprintf(os.Stderr, "  tugu unix:///tmp/proxy.sock tcp://127.0.0.1:9090\n")
-		fmt.Fprintf(os.Stderr, "  tugu npipe:////./pipe/myapp tcp://127.0.0.1:8080\n\n")
-		fmt.Fprintf(os.Stderr, "Flags:\n")
+		w := os.Stderr
+		fmt.Fprintf(w, `Usage: tugu <listen-address> <connect-address>
+
+A cross-platform IPC socket bridge. Listens on the first address, connects
+to the second, and copies data bidirectionally for each incoming connection.
+
+Address formats:
+
+  tcp://host:port          TCP socket (all platforms)
+                           e.g. tcp://127.0.0.1:8080
+                                tcp://localhost:9090
+                                tcp://[::1]:80
+
+  unix:///path             Unix domain socket (all platforms)
+                           e.g. unix:///tmp/app.sock
+                                unix:///var/run/app.sock
+                                unix:///C:/tmp/app.sock  (Windows)
+                           unix://localhost/path is also accepted.
+
+  npipe:////./pipe/name    Windows named pipe (Windows only)
+                           e.g. npipe:////./pipe/docker_engine
+                                npipe:////./pipe/myapp
+                           npipe://./pipe/name (Docker.DotNet style) is
+                           also accepted.
+
+Examples:
+
+  # Expose a Windows named pipe as a TCP port
+  tugu npipe:////./pipe/myapp tcp://127.0.0.1:8080
+
+  # Bridge TCP to a Unix domain socket
+  tugu tcp://127.0.0.1:3000 unix:///var/run/app.sock
+
+  # Bridge a Unix domain socket to TCP
+  tugu unix:///tmp/proxy.sock tcp://127.0.0.1:9090
+
+  # Chain two transports via a Unix domain socket on Windows
+  tugu npipe:////./pipe/myapp unix:///C:/tmp/bridge.sock
+  tugu unix:///C:/tmp/bridge.sock tcp://127.0.0.1:8080
+
+Flags:
+
+`)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
