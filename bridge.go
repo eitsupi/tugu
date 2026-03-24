@@ -14,9 +14,15 @@ func bridge(ctx context.Context, listener net.Listener, dial func(ctx context.Co
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
+	done := make(chan struct{})
+	defer close(done)
+
 	go func() {
-		<-ctx.Done()
-		listener.Close()
+		select {
+		case <-ctx.Done():
+			listener.Close()
+		case <-done:
+		}
 	}()
 
 	for {
@@ -50,19 +56,29 @@ func handleConn(ctx context.Context, src net.Conn, dial func(ctx context.Context
 		log.Printf("connection established: %s <-> %s", src.RemoteAddr(), dst.RemoteAddr())
 	}
 
-	done := make(chan struct{})
+	copyDone := make(chan struct{})
 
 	go func() {
 		io.Copy(dst, src)
-		dst.Close()
-		close(done)
+		closeWrite(dst)
+		close(copyDone)
 	}()
 
 	io.Copy(src, dst)
-	src.Close()
-	<-done
+	closeWrite(src)
+	<-copyDone
 
 	if verbose {
 		log.Printf("connection closed: %s", src.RemoteAddr())
+	}
+}
+
+// closeWrite shuts down the write side of a connection if supported,
+// signaling EOF to the peer without closing the read side.
+func closeWrite(conn net.Conn) {
+	if cw, ok := conn.(interface{ CloseWrite() error }); ok {
+		cw.CloseWrite()
+	} else {
+		conn.Close()
 	}
 }

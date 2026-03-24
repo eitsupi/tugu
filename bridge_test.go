@@ -171,9 +171,15 @@ func testBridgeConcurrent(
 			defer conn.Close()
 
 			msg := fmt.Sprintf("conn-%d", i)
-			conn.Write([]byte(msg))
+			if _, err := conn.Write([]byte(msg)); err != nil {
+				t.Errorf("conn %d: write: %v", i, err)
+				return
+			}
 			buf := make([]byte, len(msg))
-			io.ReadFull(conn, buf)
+			if _, err := io.ReadFull(conn, buf); err != nil {
+				t.Errorf("conn %d: read: %v", i, err)
+				return
+			}
 			if string(buf) != msg {
 				t.Errorf("conn %d: got %q, want %q", i, buf, msg)
 			}
