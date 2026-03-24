@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"runtime"
 )
 
 // resolveListener parses a URI and returns a net.Listener.
@@ -84,7 +85,7 @@ func parseAddr(raw string) (*parsedAddr, error) {
 		if u.Path == "" || u.Path == "/" {
 			return nil, fmt.Errorf("unix address requires a path: %s", raw)
 		}
-		return &parsedAddr{scheme: "unix", path: u.Path}, nil
+		return &parsedAddr{scheme: "unix", path: cleanUnixPath(u.Path)}, nil
 
 	case "npipe":
 		pipe, err := parseNpipePath(u)
@@ -127,4 +128,14 @@ func toBackslash(s string) string {
 		}
 	}
 	return string(b)
+}
+
+// cleanUnixPath strips the leading slash from Windows drive-letter paths.
+// url.Parse("unix:///C:\tmp\a.sock") yields path="/C:\tmp\a.sock";
+// net.Listen("unix", ...) needs "C:\tmp\a.sock" on Windows.
+func cleanUnixPath(p string) string {
+	if runtime.GOOS == "windows" && len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		return p[1:]
+	}
+	return p
 }
