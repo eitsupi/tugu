@@ -13,7 +13,6 @@ import (
 var version = "dev"
 
 func main() {
-	keepAlive := flag.Bool("keep-alive", false, "Reconnect to the connect-side if it becomes unavailable")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Usage = func() {
@@ -39,14 +38,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(args[0], args[1], *keepAlive, *verbose); err != nil {
+	if err := run(args[0], args[1], *verbose); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(listenAddr, connectAddr string, keepAlive, verbose bool) error {
-	_ = keepAlive // TODO: implement reconnection logic
-
+func run(listenAddr, connectAddr string, verbose bool) error {
 	listener, err := resolveListener(listenAddr)
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", listenAddr, err)

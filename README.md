@@ -50,7 +50,6 @@ tugu unix:///tmp/proxy.sock tcp://127.0.0.1:9090
 ### Flags
 
 ```
---keep-alive    Reconnect to the connect-side if it becomes unavailable
 --verbose       Enable verbose logging
 --version       Print version and exit
 --help          Print help and exit
