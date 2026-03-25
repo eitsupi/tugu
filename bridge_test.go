@@ -67,13 +67,13 @@ func TestBridge(t *testing.T) {
 		for _, connect := range transports {
 			t.Run(fmt.Sprintf("%s-to-%s", listen.name, connect.name), func(t *testing.T) {
 				t.Run("echo", func(t *testing.T) {
-					testBridgeEcho(t, listen.listen, connect.listen, connect.dial)
+					testBridgeEcho(t, listen.listen, listen.dial, connect.listen, connect.dial)
 				})
 				t.Run("concurrent", func(t *testing.T) {
-					testBridgeConcurrent(t, listen.listen, connect.listen, connect.dial)
+					testBridgeConcurrent(t, listen.listen, listen.dial, connect.listen, connect.dial)
 				})
 				t.Run("half-close", func(t *testing.T) {
-					testBridgeHalfClose(t, listen.listen, connect.listen, connect.dial)
+					testBridgeHalfClose(t, listen.listen, listen.dial, connect.listen, connect.dial)
 				})
 			})
 		}
@@ -100,6 +100,7 @@ func echoServer(t *testing.T, l net.Listener) {
 func testBridgeEcho(
 	t *testing.T,
 	makeListen func(*testing.T) net.Listener,
+	makeClientDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 	makeBackend func(*testing.T) net.Listener,
 	makeDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 ) {
@@ -118,7 +119,7 @@ func testBridgeEcho(
 	go bridge(ctx, front, makeDial(t, backend.Addr().String()), false)
 
 	// Connect through the bridge.
-	conn, err := net.Dial(front.Addr().Network(), front.Addr().String())
+	conn, err := makeClientDial(t, front.Addr().String())(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,6 +142,7 @@ func testBridgeEcho(
 func testBridgeConcurrent(
 	t *testing.T,
 	makeListen func(*testing.T) net.Listener,
+	makeClientDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 	makeBackend func(*testing.T) net.Listener,
 	makeDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 ) {
@@ -160,10 +162,11 @@ func testBridgeConcurrent(
 	var wg sync.WaitGroup
 	wg.Add(n)
 
+	dialFront := makeClientDial(t, front.Addr().String())
 	for i := range n {
 		go func() {
 			defer wg.Done()
-			conn, err := net.Dial(front.Addr().Network(), front.Addr().String())
+			conn, err := dialFront(ctx)
 			if err != nil {
 				t.Error(err)
 				return
@@ -192,6 +195,7 @@ func testBridgeConcurrent(
 func testBridgeHalfClose(
 	t *testing.T,
 	makeListen func(*testing.T) net.Listener,
+	makeClientDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 	makeBackend func(*testing.T) net.Listener,
 	makeDial func(*testing.T, string) func(context.Context) (net.Conn, error),
 ) {
@@ -216,7 +220,7 @@ func testBridgeHalfClose(
 
 	go bridge(ctx, front, makeDial(t, backend.Addr().String()), false)
 
-	conn, err := net.Dial(front.Addr().Network(), front.Addr().String())
+	conn, err := makeClientDial(t, front.Addr().String())(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +325,15 @@ func TestResolveListenerUnixCleanup(t *testing.T) {
 	// Create a stale socket file.
 	os.WriteFile(sock, []byte{}, 0o600)
 
-	l, err := resolveListener("unix://" + sock)
+	// Build a proper unix:// URL. On Unix, sock starts with "/" so
+	// "unix://" + sock naturally gives "unix:///path". On Windows,
+	// sock starts with a drive letter (e.g. "C:\..."), so we need
+	// an extra "/" and forward slashes to form a valid URL.
+	sockSlash := filepath.ToSlash(sock)
+	if sockSlash[0] != '/' {
+		sockSlash = "/" + sockSlash
+	}
+	l, err := resolveListener("unix://" + sockSlash)
 	if err != nil {
 		t.Fatal(err)
 	}
