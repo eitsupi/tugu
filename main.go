@@ -19,29 +19,33 @@ func main() {
 		w := os.Stderr
 		fmt.Fprint(w, `Usage: tugu <listen-address> <connect-address>
 
-A cross-platform IPC socket bridge. Listens on the first address, connects
-to the second, and copies data bidirectionally for each incoming connection.
+A minimal proxy that bridges Windows named pipes and Unix domain sockets.
+Listens on the first address, connects to the second, and copies data
+bidirectionally for each incoming connection.
 
 Address formats:
 
-  tcp://host:port          TCP socket (all platforms)
-                           e.g. tcp://127.0.0.1:8080
-                                tcp://localhost:9090
-                                tcp://[::1]:80
-
-  unix:///path             Unix domain socket (all platforms)
-                           e.g. unix:///tmp/app.sock
-                                unix:///var/run/app.sock
-                                unix:///C:/tmp/app.sock  (Windows)
-                           unix://localhost/path is also accepted.
-
-  npipe:////./pipe/name    Windows named pipe (Windows only)
+  npipe:////./pipe/name    Windows named pipe
                            e.g. npipe:////./pipe/docker_engine
                                 npipe:////./pipe/myapp
                            npipe://./pipe/name (Docker.DotNet style) is
                            also accepted.
 
+  unix:///path             Unix domain socket
+                           e.g. unix:///tmp/app.sock
+                                unix:///var/run/app.sock
+                                unix:///C:/tmp/app.sock  (Windows)
+                           unix://localhost/path is also accepted.
+
+  tcp://host:port          TCP socket
+                           e.g. tcp://127.0.0.1:8080
+                                tcp://localhost:9090
+                                tcp://[::1]:80
+
 Examples:
+
+  # Bridge a named pipe to a Unix domain socket
+  tugu npipe:////./pipe/myapp unix:///tmp/myapp.sock
 
   # Expose a Windows named pipe as a TCP port
   tugu npipe:////./pipe/myapp tcp://127.0.0.1:8080
@@ -51,10 +55,6 @@ Examples:
 
   # Bridge a Unix domain socket to TCP
   tugu unix:///tmp/proxy.sock tcp://127.0.0.1:9090
-
-  # Chain two transports via a Unix domain socket on Windows
-  tugu npipe:////./pipe/myapp unix:///C:/tmp/bridge.sock
-  tugu unix:///C:/tmp/bridge.sock tcp://127.0.0.1:8080
 
 Flags:
 
