@@ -17,7 +17,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Usage = func() {
 		w := os.Stderr
-		fmt.Fprintf(w, `Usage: tugu <listen-address> <connect-address>
+		fmt.Fprint(w, `Usage: tugu <listen-address> <connect-address>
 
 A cross-platform IPC socket bridge. Listens on the first address, connects
 to the second, and copies data bidirectionally for each incoming connection.
